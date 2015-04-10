@@ -5,10 +5,17 @@
     </head>
     <body>
         <div id="feedback" style="display:none;"></div>
-        <input type="text" id="search-textbox" placeholder="Search OMDB API" />
-        <input type="button" id="search-button" value="Search" />
-        <ul id="search-result-list">
-        </ul>
+        <div id="container"></div>
+
+        <!-- all the view templates will be in this hidden div -->
+        <div style="display:none;">
+            <div id="home-view">
+                <input type="text" id="search-textbox" placeholder="Search OMDB API" />
+                <input type="button" id="search-button" value="Search" />
+                <ul id="search-result-list">
+                </ul>
+            </div>
+        </div>
     </body>
 
     <script>
@@ -79,8 +86,8 @@
 
     })(window,document,JSON);
 
-    // parent app - hosts 
-    var spaApplication = (function(window,document,JSON,ajax,undefined){
+    // parent app - hosts utility and helpers for the rest of the app
+    var spaApplication = (function(window,document,undefined){
 
         if(window.spaApplication) return window.spaApplication;
 
@@ -117,26 +124,141 @@
 
         return new ApplicationKlass();
 
-    })(window,document,JSON,ajaxHelpers);
+    })(window,document);
 
     (function(window,document,JSON,ajax,app,undefined){
 
         // TODO - event binding on search-result-list
+        // TODO - should be rendering views w/ the app, so event handling can happen
 
-        var searchBox = document.getElementById("search-textbox"),
-            searchButton = document.getElementById("search-button"),
-            searchResultList = document.getElementById("search-result-list");
+        // var searchBox = document.getElementById("search-textbox"),
+        //     searchButton = document.getElementById("search-button"),
+        //     searchResultList = document.getElementById("search-result-list");
 
-        
+        cbEmpty = function(){}
 
+        var ViewKlass = function(options){
+            var self = this;
+
+            // the html that will render for your view - should be a plain-old string of html
+            this.html = options.html || '';
+
+            // the dom element on the page that your view will render into
+            this.pageAnchor = options.pageAnchor;
+
+            // the ui hash you pass in is expected to be of the form
+            // { 'foo': '#selector' }
+            //
+            // where 'foo' is the name of that element for your view (ie: this.foo),
+            // and the selector must be of the form
+            // '#some-selector'
+            //
+            // where 'some-selector' is the id of the element that 'this.foo' should point to.
+            // for now, this.ui only supports ID selectors, for simplicity of the demo.
+            this.ui = options.ui;
+
+            // pass in any functions to add to your view via the 'functions' option
+            // which should be of the form
+            // functions: { nameOfFunction: function(){ ... }, ... }
+            for(var nextFunction in options.functions) this[nextFunction] = options.functions[nextFunction];
+
+            // pass events you want to have bound after your view is rendered.
+            // this is expected to be a list of the form:
+            // [
+            //    {event: 'name of event', element: 'foo', handler: 'nameOfFunction'},
+            //    { ... }, ...
+            // ]
+            // where 'event' is the name of the event to bind (like 'click' or 'keyup'),
+            //       'element' is the name of an element you specify in options.ui, and
+            //       'handler' is a function you specify with options.functions
+            this.events = options.events || [];
+
+            if(!(this.pageAnchor instanceof HTMLElement)) throw "pageAnchor must be an html element";
+        }
+
+        // call this to render your view. for example:
+        // var myCoolView = new ViewKlass({ ... });
+        // myCoolView.render();
+        ViewKlass.prototype.render = function(){
+            this.pageAnchor.innerHTML = this.html;
+            this._bindUIElements();
+            this._bindEvents();
+            if(typeof this.onRenderComplete === 'function') this.onRenderComplete();
+        }
+
+        // will be called automatically after your view has been rendered,
+        // and will bind all of your 'ui' hash elements to the view.
+        // this call MUST come after a call to render, as your view's html
+        // will not exist in the DOM until then.
+        ViewKlass.prototype._bindUIElements = function(){
+            if(!this.ui) return;
+            for(var strName in this.ui){
+                var strSelector = this.ui[strName];
+                if(typeof strSelector !== 'string' || strSelector.length <= 0 || strSelector[0] !== '#') throw "UI selectors must be a string of the form #foo";
+
+                // TOOD - querySelectorAll comes w/ a price ...
+                this[strName] = this.pageAnchor.querySelectorAll(strSelector)[0];
+            }
+        }
+
+        // will get called automatically after you render your view, and will bind
+        // any events you passed in during construction
+        ViewKlass.prototype._bindEvents = function(){
+            if(!this.events || this.events.length <= 0) return;
+
+            for(var i = 0, iLen = this.events.length; i < iLen; i++){
+                var nextEventData = this.events[i];
+                this._bind(nextEventData.element, nextEventData.event, nextEventData.handler);
+            }
+        }
+        ViewKlass.prototype._bind = function(strElementName, strEventName, strHandlerName){
+            var self = this;
+            this[strElementName].addEventListener(strEventName, function(){
+                self[strHandlerName].apply(self,arguments);
+            });
+        }
+
+
+
+        var homePage = new ViewKlass({
+            html: document.getElementById("home-view").innerHTML,
+            pageAnchor: document.getElementById("container"),
+            ui:{
+                'searchBox': '#search-textbox',
+                'searchButton': '#search-button'
+            },
+            events:[
+                {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
+                {event: 'click', element: 'searchButton', handler: 'onSearchClick'}
+            ],
+            functions:{
+                onRenderComplete:function(){
+                    this.searchBox.focus();
+                },
+                performMovieSearch:function(strSearch){
+                    alert('searching for ' + strSearch);
+                },
+                onSearchBoxKeyup: function(e){
+                    if(e.keyCode === 13){
+                        this.performMovieSearch(this.searchBox.value);  
+                    } 
+                },
+                onSearchClick:function(e){
+                    this.performMovieSearch(this.searchBox.value);
+                }
+            }
+        });
+
+        homePage.render();
+
+/*
         function displayMoveSearchResults(results){
             if(results == null){
                 app.displayError("Missing required result list, cannot show movie search results");
                 return;
             }
 
-            // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"},{"Title":"Star Wars: Episode V - The Empire Strikes Back","Year":"1980","imdbID":"tt0080684","Type":"movie"},{"Title":"Star Wars: Episode VI - Return of the Jedi","Year":"1983","imdbID":"tt0086190","Type":"movie"},{"Title":"Star Wars: Episode I - The Phantom Menace","Year":"1999","imdbID":"tt0120915","Type":"movie"},{"Title":"Star Wars: Episode III - Revenge of the Sith","Year":"2005","imdbID":"tt0121766","Type":"movie"},{"Title":"Star Wars: Episode II - Attack of the Clones","Year":"2002","imdbID":"tt0121765","Type":"movie"},{"Title":"Star Wars: The Clone Wars","Year":"2008","imdbID":"tt1185834","Type":"movie"},{"Title":"Star Wars: The Clone Wars","Year":"2008–2014","imdbID":"tt0458290","Type":"series"},{"Title":"Star Wars: Clone Wars","Year":"2003–2005","imdbID":"tt0361243","Type":"series"},{"Title":"The Star Wars Holiday Special","Year":"1978","imdbID":"tt0193524","Type":"movie"}]
-
+            // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
             var newResultListFragment = document.createDocumentFragment(),
                 newLi = null,
                 newButton = null,
@@ -214,16 +336,10 @@
                 }
             });
         }
-        searchButton.addEventListener('click',function(){
-            performMovieSearch(searchBox.value);
-        });
-        searchBox.addEventListener('keyup', function(e){
-            if(e.keyCode && e.keyCode === 13) performMovieSearch(searchBox.value);
-        });
 
         // give the searchbox immediate focus, so users can start searching away!
         searchBox.focus();
-
+*/
     })(window,document,JSON,ajaxHelpers,spaApplication);
     
     </script>
