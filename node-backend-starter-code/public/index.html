@@ -79,47 +79,59 @@
 
     })(window,document,JSON);
 
-    // main app, so to speak
-    (function(window,document,JSON,ajax,undefined){
+    // parent app - hosts 
+    var spaApplication = (function(window,document,JSON,ajax,undefined){
+
+        if(window.spaApplication) return window.spaApplication;
+
+        var ApplicationKlass = function(){
+            this.feedbackDiv = document.getElementById("feedback");
+        }
+        ApplicationKlass.prototype.displayFeedback = function(strText, status){
+            if(typeof strText !== 'string' || strText.length <= 0) return;
+            this.feedbackDiv.innerHTML = strText;
+            switch(status){
+                case 'error':
+                    this.feedbackDiv.style.border = "1px solid red";
+                    break;
+                case 'info':
+                    this.feedbackDiv.style.border = "1px solid green";
+                    break;
+                default:
+                    this.feedbackDiv.style.border = "1px solid blue";
+                    break;
+            }
+
+            this.feedbackDiv.style.display = "block";
+        }
+        ApplicationKlass.prototype.displayError = function(strText){
+            this.displayFeedback(strText,'error');
+        }
+        ApplicationKlass.prototype.displayInfo = function(strText){
+            this.displayFeedback(strText,'info');
+        }
+        ApplicationKlass.prototype.clearFeedback = function(){
+            this.feedbackDiv.innerHTML = '';
+            this.feedbackDiv.style.display = "none";
+        }
+
+        return new ApplicationKlass();
+
+    })(window,document,JSON,ajaxHelpers);
+
+    (function(window,document,JSON,ajax,app,undefined){
 
         // TODO - event binding on search-result-list
 
         var searchBox = document.getElementById("search-textbox"),
-            feedbackDiv = document.getElementById("feedback"),
             searchButton = document.getElementById("search-button"),
             searchResultList = document.getElementById("search-result-list");
 
-        function displayFeedback(strText, status){
-            if(typeof strText !== 'string' || strText.length <= 0) return;
-            feedbackDiv.innerHTML = strText;
-            switch(status){
-                case 'error':
-                    feedbackDiv.style.border = "1px solid red";
-                    break;
-                case 'info':
-                    feedbackDiv.style.border = "1px solid green";
-                    break;
-                default:
-                    feedbackDiv.style.border = "1px solid blue";
-                    break;
-            }
-
-            feedbackDiv.style.display = "block";
-        }
-        function displayError(strText){
-            displayFeedback(strText,'error');
-        }
-        function displayInfo(strText){
-            displayFeedback(strText,'info');
-        }
-        function clearFeedback(){
-            feedbackDiv.innerHTML = '';
-            feedbackDiv.style.display = "none";
-        }
+        
 
         function displayMoveSearchResults(results){
             if(results == null){
-                displayError("Missing required result list, cannot show movie search results");
+                app.displayError("Missing required result list, cannot show movie search results");
                 return;
             }
 
@@ -151,9 +163,9 @@
         }
         
         function performMovieSearch(strSearch){
-            clearFeedback();
+            app.clearFeedback();
             if(typeof strSearch !== 'string'){
-                displayError("Search term must be a valid string");
+                app.displayError("Search term must be a valid string");
                 return;
             }
 
@@ -170,23 +182,23 @@
                     try{
                         omdbResponse = JSON.parse(strJsonResponse);
                     }catch(e){
-                        displayError("Encountered this error after movie request succeeded, please try again: " + e);
+                        app.displayError("Encountered this error after movie request succeeded, please try again: " + e);
                         return;
                     }
 
                     if(omdbResponse == null){
-                        displayError("Unexpected response format, please try again");
+                        app.displayError("Unexpected response format, please try again");
                         return;
                     }
 
                     if(omdbResponse.Response === 'False'){
                         var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
-                        displayError(strError);
+                        app.displayError(strError);
                         return;
                     }
 
                     if(!omdbResponse.Search){
-                        displayError("Failed to retrieve any search results from OMDBAPI");
+                        app.displayError("Failed to retrieve any search results from OMDBAPI");
                         return;
                     }
 
@@ -196,7 +208,7 @@
                 },
                 error:function(status, xmlhttp){
                     var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
-                    displayError("Encountered the following error, please try again: " + strError);
+                    app.displayError("Encountered the following error, please try again: " + strError);
                     // TODO - busy icon off
                     // TODO - button enabled, textbox enabled
                 }
@@ -212,7 +224,7 @@
         // give the searchbox immediate focus, so users can start searching away!
         searchBox.focus();
 
-    })(window,document,JSON,ajaxHelpers);
+    })(window,document,JSON,ajaxHelpers,spaApplication);
     
     </script>
 </html>
