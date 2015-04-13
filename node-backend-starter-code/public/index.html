@@ -211,6 +211,11 @@
                 this._bind(nextEventData.element, nextEventData.event, nextEventData.handler);
             }
         }
+
+        // capture closure for binding the given element to the given event with the given
+        // handler function.
+        // this function assumes that the given element and handler are bound to 'this'
+        // already
         ViewKlass.prototype._bind = function(strElementName, strEventName, strHandlerName){
             var self = this;
             this[strElementName].addEventListener(strEventName, function(){
@@ -225,7 +230,8 @@
             pageAnchor: document.getElementById("container"),
             ui:{
                 'searchBox': '#search-textbox',
-                'searchButton': '#search-button'
+                'searchButton': '#search-button',
+                'searchResultList': "#search-result-list"
             },
             events:[
                 {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
@@ -236,7 +242,88 @@
                     this.searchBox.focus();
                 },
                 performMovieSearch:function(strSearch){
-                    alert('searching for ' + strSearch);
+                    app.clearFeedback();
+                    if(typeof strSearch !== 'string'){
+                        app.displayError("Search term must be a valid string");
+                        return;
+                    }
+
+                    if(strSearch.length <= 0) return;
+
+                    // TODO - busy icon
+                    // TODO - button disabled, textbox disabled
+                    var self = this;
+                    ajax.request({
+                        url: 'http://www.omdbapi.com/?s=' + strSearch,
+                        type:'get',
+                        success: function(strJsonResponse){
+
+                            var omdbResponse = null;
+                            try{
+                                omdbResponse = JSON.parse(strJsonResponse);
+                            }catch(e){
+                                app.displayError("Encountered this error after movie request succeeded, please try again: " + e);
+                                return;
+                            }
+
+                            if(omdbResponse == null){
+                                app.displayError("Unexpected response format, please try again");
+                                return;
+                            }
+
+                            if(omdbResponse.Response === 'False'){
+                                var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
+                                app.displayError(strError);
+                                return;
+                            }
+
+                            if(!omdbResponse.Search){
+                                app.displayError("Failed to retrieve any search results from OMDBAPI");
+                                return;
+                            }
+
+                            self.displayMoveSearchResults(omdbResponse.Search);
+                            // TODO - busy icon off
+                            // TODO - button enabled, textbox enabled
+                        },
+                        error:function(status, xmlhttp){
+                            var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
+                            app.displayError("Encountered the following error, please try again: " + strError);
+                            // TODO - busy icon off
+                            // TODO - button enabled, textbox enabled
+                        }
+                    });
+                },
+                displayMoveSearchResults: function(results){
+                    if(results == null){
+                        app.displayError("Missing required result list, cannot show movie search results");
+                        return;
+                    }
+
+                    // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
+                    var newResultListFragment = document.createDocumentFragment(),
+                        newLi = null,
+                        newButton = null,
+                        newFave = null;
+                    for(var i = 0, iLen = results.length; i < iLen; i++){
+                        newLi = document.createElement("LI");
+
+                        newButton = document.createElement("BUTTON");
+                        newButton.type = 'button';
+                        newButton.appendChild( document.createTextNode(results[i].Title) );
+                        newLi.appendChild(newButton);
+
+                        newFave = document.createElement("BUTTON");
+                        newFave.type = 'button';
+                        newFave.appendChild( document.createTextNode('Favorite!') );//TODO - make this an icon
+                                                                                    //TODO - needs to contain ID for event handler
+                        newLi.appendChild(newFave);
+
+                        newResultListFragment.appendChild(newLi);
+                    }
+
+                    this.searchResultList.innerHTML = "";
+                    this.searchResultList.appendChild(newResultListFragment);
                 },
                 onSearchBoxKeyup: function(e){
                     if(e.keyCode === 13){
@@ -250,96 +337,7 @@
         });
 
         homePage.render();
-
-/*
-        function displayMoveSearchResults(results){
-            if(results == null){
-                app.displayError("Missing required result list, cannot show movie search results");
-                return;
-            }
-
-            // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
-            var newResultListFragment = document.createDocumentFragment(),
-                newLi = null,
-                newButton = null,
-                newFave = null;
-            for(var i = 0, iLen = results.length; i < iLen; i++){
-                newLi = document.createElement("LI");
-
-                newButton = document.createElement("BUTTON");
-                newButton.type = 'button';
-                newButton.appendChild( document.createTextNode(results[i].Title) );
-                newLi.appendChild(newButton);
-
-                newFave = document.createElement("BUTTON");
-                newFave.type = 'button';
-                newFave.appendChild( document.createTextNode('Favorite!') );//TODO - make this an icon
-                                                                            //TODO - needs to contain ID for event handler
-                newLi.appendChild(newFave);
-
-                newResultListFragment.appendChild(newLi);
-            }
-
-            searchResultList.innerHTML = "";
-            searchResultList.appendChild(newResultListFragment);
-        }
         
-        function performMovieSearch(strSearch){
-            app.clearFeedback();
-            if(typeof strSearch !== 'string'){
-                app.displayError("Search term must be a valid string");
-                return;
-            }
-
-            if(strSearch.length <= 0) return;
-
-            // TODO - busy icon
-            // TODO - button disabled, textbox disabled
-            ajax.request({
-                url: 'http://www.omdbapi.com/?s=' + strSearch,
-                type:'get',
-                success: function(strJsonResponse){
-
-                    var omdbResponse = null;
-                    try{
-                        omdbResponse = JSON.parse(strJsonResponse);
-                    }catch(e){
-                        app.displayError("Encountered this error after movie request succeeded, please try again: " + e);
-                        return;
-                    }
-
-                    if(omdbResponse == null){
-                        app.displayError("Unexpected response format, please try again");
-                        return;
-                    }
-
-                    if(omdbResponse.Response === 'False'){
-                        var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
-                        app.displayError(strError);
-                        return;
-                    }
-
-                    if(!omdbResponse.Search){
-                        app.displayError("Failed to retrieve any search results from OMDBAPI");
-                        return;
-                    }
-
-                    displayMoveSearchResults(omdbResponse.Search);
-                    // TODO - busy icon off
-                    // TODO - button enabled, textbox enabled
-                },
-                error:function(status, xmlhttp){
-                    var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
-                    app.displayError("Encountered the following error, please try again: " + strError);
-                    // TODO - busy icon off
-                    // TODO - button enabled, textbox enabled
-                }
-            });
-        }
-
-        // give the searchbox immediate focus, so users can start searching away!
-        searchBox.focus();
-*/
     })(window,document,JSON,ajaxHelpers,spaApplication);
     
     </script>
