@@ -4,43 +4,55 @@
         <title>Movies!</title>
     </head>
     <body>
-        <div id="feedback" style="display:none;"></div>
-        <div id="container"></div>
+        <div id="body">
 
-        <!-- all the view templates will be in this hidden div -->
-        <div style="display:none;">
-            <div id="home-view">
-                <input type="text" id="search-textbox" placeholder="Search OMDB API" />
-                <input type="button" id="search-button" value="Search" />
-                <ul id="search-result-list">
-                </ul>
-            </div>
-            <div id="movie-view">
-                <h1 id="title"></h1>
-                <hr/>
+            <!-- page nags and feedback -->
+            <div id="feedback" style="display:none;"></div>
 
-                <div>Rating:</div>
-                <div id="rating"></div>
+            <!-- main container for SPA content -->
+            <div id="container"></div>
 
-                <div>Director:</div>
-                <div id="director"></div>
+            <!-- all the view templates will be in this hidden div -->
+            <div style="display:none;">
+                <div id="home-view">
+                    <div>
+                        <h1>Search OMD</h1>
+                        <input type="text" id="search-textbox" placeholder="Search OMDB API" />
+                        <input type="button" id="search-button" value="Search" />
+                        <p>
+                            or <a href="#" id="view-favorites-link">view all favorites</a>
+                        </p>
+                    </div>
+                    <ul id="search-result-list">
+                    </ul>
+                </div>
+                <div id="movie-view">
+                    <h1 id="title"></h1>
+                    <hr/>
 
-                <div>Genre:</div>
-                <div id="genre"></div>
+                    <div>Rating:</div>
+                    <div id="rating"></div>
 
-                <div>Plot:</div>
-                <div id="plot"></div>
+                    <div>Director:</div>
+                    <div id="director"></div>
 
-                <div>Awards:</div>
-                <div id="awards"></div>
+                    <div>Genre:</div>
+                    <div id="genre"></div>
 
-                <div>Released:</div>
-                <div id="released"></div>
+                    <div>Plot:</div>
+                    <div id="plot"></div>
 
-                <div>Runtime:</div>
-                <div id="runtime"></div>
-                <hr/>
-                <button type="button" id="back-to-search">Back to Search</button>
+                    <div>Awards:</div>
+                    <div id="awards"></div>
+
+                    <div>Released:</div>
+                    <div id="released"></div>
+
+                    <div>Runtime:</div>
+                    <div id="runtime"></div>
+                    <hr/>
+                    <button type="button" id="back-to-search">Back to Search</button>
+                </div>
             </div>
         </div>
     </body>
@@ -78,11 +90,13 @@
                 ui:{
                     'searchBox': '#search-textbox',
                     'searchButton': '#search-button',
-                    'searchResultList': "#search-result-list"
+                    'searchResultList': "#search-result-list",
+                    'viewFavoritesLink': '#view-favorites-link'
                 },
                 events:[
                     {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
                     {event: 'click', element: 'searchButton', handler: 'onSearchClick'},
+                    {event: 'click', element: 'viewFavoritesLink', handler: 'onViewFavoritesClick'},
 
                     // by taking advantage of event-bubbling, we can handle the 'add-to-favorites'
                     // button click events, AND the movie-selection button click events by adding
@@ -91,6 +105,9 @@
                     {event: 'click', element: 'searchResultList', handler: 'mainEventHandler'}
                 ],
                 functions:{
+                    onViewFavoritesClick:function(e){
+                        favoritePageHandler();
+                    },
                     mainEventHandler:function(e){
                         if(e.target.id === BUTTON_TYPE_MOVIE)
                             this.onMovieButtonClick(e.target.value);
@@ -296,6 +313,10 @@
                     // TODO - busy indicator
                 }
             });
+        }
+
+        function favoritePageHandler(){
+            alert('going to faves');
         }
 
         renderHomePage();
