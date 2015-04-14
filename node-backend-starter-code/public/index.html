@@ -18,73 +18,10 @@
         </div>
     </body>
 
+    <script type="text/javascript" src="/ajax-helpers.js" />
     <script>
 
-    // TODO - JSON not supported in older browsers ...
-    // TODO - put this in it's own script file
-    var ajaxHelpers = (function(window,document,JSON,undefined){
-
-        if(window.ajaxHelpers) return window.ajaxHelpers;
-
-        // for now, only support the bare-minimum for demo purposes
-        var supportedAjaxRequestTypes = ['get','post'];
-
-        // just an empty helper function, for utility
-        function cbEmpty(){}
-
-        var exports = {
-            request:function(options){
-                var xmlhttp,
-                    options = options || {},
-                    cbSuccess = typeof options.success === 'function' ? options.success : cbEmpty,
-                    cbError = typeof options.error === 'function' ? options.error : cbEmpty,
-                    type = options.type,
-                    url = options.url,
-                    data = options.data;
-
-                if(typeof url !== 'string') throw "Cannot make ajax request - missing required 'url' parameter";
-                if(typeof type !== 'string' || type.length <= 0) throw "Cannot make ajax request - missing required 'type' parameter";
-
-                type = type.toLowerCase();
-                if(supportedAjaxRequestTypes.indexOf(type) < 0) throw "Cannot make ajax request of type '" + type + "' - must be one of " + supportedAjaxRequestTypes.join(',');
-
-                // code for IE7+, Firefox, Chrome, Opera, Safari
-                if (window.XMLHttpRequest)
-                {
-                    xmlhttp=new XMLHttpRequest();
-                }
-
-                // code for IE6, IE5
-                else
-                {
-                    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-                }
-
-                xmlhttp.onreadystatechange = function(){
-                    if (xmlhttp.readyState === 4){ // request is finished, response is ready
-                        switch(xmlhttp.status){
-                            case 200:
-                                cbSuccess.call(xmlhttp, xmlhttp.responseText);
-                                break;
-                            default:
-                                cbError.call(xmlhttp, xmlhttp.status, xmlhttp);
-                                break;
-                        }
-                    }
-                };
-
-                xmlhttp.open(type,url,true);
-                if(type === 'post') xmlhttp.setRequestHeader("Content-type","application/json");
-                if(data != null)
-                    xmlhttp.send(JSON.stringify(data));
-                else
-                    xmlhttp.send();
-            }
-        };
-
-        return exports;
-
-    })(window,document,JSON);
+    
 
     // parent app - hosts utility and helpers for the rest of the app
     var spaApplication = (function(window,document,undefined){
@@ -126,14 +63,11 @@
 
     })(window,document);
 
+    // TODO - JSON not supported in older browsers ...
     (function(window,document,JSON,ajax,app,undefined){
 
         // TODO - event binding on search-result-list
         // TODO - should be rendering views w/ the app, so event handling can happen
-
-        // var searchBox = document.getElementById("search-textbox"),
-        //     searchButton = document.getElementById("search-button"),
-        //     searchResultList = document.getElementById("search-result-list");
 
         cbEmpty = function(){}
 
@@ -144,7 +78,7 @@
             this.html = options.html || '';
 
             // the dom element on the page that your view will render into
-            this.pageAnchor = options.pageAnchor;
+            this.viewAnchor = options.viewAnchor;
 
             // the ui hash you pass in is expected to be of the form
             // { 'foo': '#selector' }
@@ -173,14 +107,14 @@
             //       'handler' is a function you specify with options.functions
             this.events = options.events || [];
 
-            if(!(this.pageAnchor instanceof HTMLElement)) throw "pageAnchor must be an html element";
+            if(!(this.viewAnchor instanceof HTMLElement)) throw "viewAnchor must be an html element";
         }
 
         // call this to render your view. for example:
         // var myCoolView = new ViewKlass({ ... });
         // myCoolView.render();
         ViewKlass.prototype.render = function(){
-            this.pageAnchor.innerHTML = this.html;
+            this.viewAnchor.innerHTML = this.html;
             this._bindUIElements();
             this._bindEvents();
             if(typeof this.onRenderComplete === 'function') this.onRenderComplete();
@@ -197,7 +131,7 @@
                 if(typeof strSelector !== 'string' || strSelector.length <= 0 || strSelector[0] !== '#') throw "UI selectors must be a string of the form #foo";
 
                 // TOOD - querySelectorAll comes w/ a price ...
-                this[strName] = this.pageAnchor.querySelectorAll(strSelector)[0];
+                this[strName] = this.viewAnchor.querySelectorAll(strSelector)[0];
             }
         }
 
@@ -227,7 +161,7 @@
 
         var homePage = new ViewKlass({
             html: document.getElementById("home-view").innerHTML,
-            pageAnchor: document.getElementById("container"),
+            viewAnchor: document.getElementById("container"),
             ui:{
                 'searchBox': '#search-textbox',
                 'searchButton': '#search-button',
