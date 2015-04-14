@@ -1,6 +1,6 @@
 ##Instructor Code Challenge
 
----
+Note: for notes on my implementation, including documentation, please refer to the wiki.
 
 ###GOAL###
 
