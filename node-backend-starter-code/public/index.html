@@ -15,6 +15,9 @@
                 <ul id="search-result-list">
                 </ul>
             </div>
+            <div id="movie-view">
+
+            </div>
         </div>
     </body>
 
@@ -29,6 +32,21 @@
         // TODO - event binding on search-result-list
         // TODO - should be rendering views w/ the app, so event handling can happen
 
+        // there are two conceptual types of buttons on the home page:
+        // 1. a button for a movie search result, and
+        // 2. a button to add a search result to the 'favorites'
+        //
+        // these constants will help differentiate b/w those two types of buttons:
+        var BUTTON_TYPE_MOVIE = 'movieButton',
+            BUTTON_TYPE_FAVORITE = 'movieFavoriteButton';
+
+        // when the user clicks a 'favorite' button, we need to know two things:
+        // the title and id of the movie they want to add to 'favorites'.
+        // we'll delimit those two pieces of data with this delimiter,
+        // so that it's easy to parse-out.
+        var FAVORITE_DATA_DELIMITER = "@@@",
+            reFavoriteDataDelimiter = new RegExp(FAVORITE_DATA_DELIMITER);
+
         var homePage = new SPAViewKlass({
             html: document.getElementById("home-view").innerHTML,
             viewAnchor: document.getElementById("container"),
@@ -39,9 +57,37 @@
             },
             events:[
                 {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
-                {event: 'click', element: 'searchButton', handler: 'onSearchClick'}
+                {event: 'click', element: 'searchButton', handler: 'onSearchClick'},
+                {event: 'click', element: 'searchResultList', handler: 'mainEventHandler'}
             ],
             functions:{
+                mainEventHandler:function(e){
+                    if(e.target.id === BUTTON_TYPE_MOVIE)
+                        this.onMovieButtonClick(e.target.value);
+                    else if(e.target.id === BUTTON_TYPE_FAVORITE)
+                        this.onAddToFavoritesButtonClick(e.target.value);
+                },
+                onMovieButtonClick:function(idOfMovie){
+                    if(typeof idOfMovie !== 'string' || idOfMovie.length <= 0) throw "Cannot view movie page without an id";
+                    
+                    alert('show me the money for ' + idOfMovie);
+                },
+                onAddToFavoritesButtonClick:function(titleAndIdOfMovie){
+                    if(typeof titleAndIdOfMovie !== 'string' || titleAndIdOfMovie.length <= 0) throw "Missing required title-and-id string for adding to favorites";
+
+                    // when we insert the 'add to favorite' buttons to the view, the 'value' of those
+                    // buttons are stuffed with the title and id of the movie they correspond to.
+                    // let's parse that data out and make sure it's present - error out if not!
+                    var titleAndIDTuple = titleAndIdOfMovie.split(reFavoriteDataDelimiter),
+                        title = titleAndIDTuple[0],
+                        id = titleAndIDTuple[1];
+
+                    if(typeof title !== 'string' || title.length <= 0) throw "Encountered improperly formatted favorite-button value (missing title)";
+
+                    if(typeof id !== 'string' || id.length <= 0) throw "Encountered improperly formatted favorite-button value (missing id)";
+
+                    alert("title: " + title + " and id: " + id);
+                },
                 onRenderComplete:function(){
                     this.searchBox.focus();
                 },
@@ -107,21 +153,29 @@
                     // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
                     var newResultListFragment = document.createDocumentFragment(),
                         newLi = null,
-                        newButton = null,
-                        newFave = null;
+                        movieButton = null,
+                        faveButton = null,
+                        title = null,
+                        imdbID = null;
                     for(var i = 0, iLen = results.length; i < iLen; i++){
+
+                        title = results[i].Title;
+                        imdbID = results[i].imdbID;
                         newLi = document.createElement("LI");
 
-                        newButton = document.createElement("BUTTON");
-                        newButton.type = 'button';
-                        newButton.appendChild( document.createTextNode(results[i].Title) );
-                        newLi.appendChild(newButton);
+                        movieButton = document.createElement("BUTTON");
+                        movieButton.type = 'button';
+                        movieButton.id = BUTTON_TYPE_MOVIE;
+                        movieButton.value = imdbID;
+                        movieButton.appendChild( document.createTextNode(title) );
+                        newLi.appendChild(movieButton);
 
-                        newFave = document.createElement("BUTTON");
-                        newFave.type = 'button';
-                        newFave.appendChild( document.createTextNode('Favorite!') );//TODO - make this an icon
-                                                                                    //TODO - needs to contain ID for event handler
-                        newLi.appendChild(newFave);
+                        faveButton = document.createElement("BUTTON");
+                        faveButton.type = 'button';
+                        faveButton.id = BUTTON_TYPE_FAVORITE;
+                        faveButton.value = title + FAVORITE_DATA_DELIMITER + imdbID;
+                        faveButton.appendChild( document.createTextNode('Add to Favorites') );//TODO - make this an icon
+                        newLi.appendChild(faveButton);
 
                         newResultListFragment.appendChild(newLi);
                     }

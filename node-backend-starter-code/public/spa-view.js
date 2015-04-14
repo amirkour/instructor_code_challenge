@@ -20,6 +20,7 @@ var SPAViewKlass = (function(window,document,undefined){
         // the dom element on the page that your view will render into.
         // this element should already exist on the page when you render your view.
         this.viewAnchor = options.viewAnchor;
+        if(!(this.viewAnchor instanceof HTMLElement)) throw "viewAnchor must be an html element";
 
         // the 'ui' hash you pass in is expected to be of the form
         // { 'foo': '#selector' }
@@ -47,8 +48,6 @@ var SPAViewKlass = (function(window,document,undefined){
         //       'element' is the name of an element you specify in options.ui, and
         //       'handler' is a function you specify with options.functions
         this.events = options.events || [];
-
-        if(!(this.viewAnchor instanceof HTMLElement)) throw "viewAnchor must be an html element";
     }
 
     /*
