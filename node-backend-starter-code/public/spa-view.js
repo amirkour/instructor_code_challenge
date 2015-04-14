@@ -1,17 +1,27 @@
+/*
+ * spa-view.js
+ *
+ * Defines a generic view that can be used to easily bind UI elements
+ * and events in a single-page app.
+ */
 var SPAViewKlass = (function(window,document,undefined){
 
     if(window.SPAViewKlass) return window.SPAViewKlass;
 
+    /*
+     * Constructor function for generic views.
+     */
     var SPAViewKlass = function(options){
         var self = this;
 
         // the html that will render for your view - should be a plain-old string of html
         this.html = options.html || '';
 
-        // the dom element on the page that your view will render into
+        // the dom element on the page that your view will render into.
+        // this element should already exist on the page when you render your view.
         this.viewAnchor = options.viewAnchor;
 
-        // the ui hash you pass in is expected to be of the form
+        // the 'ui' hash you pass in is expected to be of the form
         // { 'foo': '#selector' }
         //
         // where 'foo' is the name of that element for your view (ie: this.foo),
@@ -41,20 +51,31 @@ var SPAViewKlass = (function(window,document,undefined){
         if(!(this.viewAnchor instanceof HTMLElement)) throw "viewAnchor must be an html element";
     }
 
-    // call this to render your view. for example:
-    // var myCoolView = new SPAViewKlass({ ... });
-    // myCoolView.render();
+    /*
+     * render
+     *
+     * Call this to render your view.
+     *
+     * Example:
+     * var myView = new SPAViewKlass({ ... });
+     * myView.render();
+     */
     SPAViewKlass.prototype.render = function(){
+
+        // TODO - cleanup old events here before blowing them out of the DOM
         this.viewAnchor.innerHTML = this.html;
         this._bindUIElements();
         this._bindEvents();
         if(typeof this.onRenderComplete === 'function') this.onRenderComplete();
     }
 
-    // will be called automatically after your view has been rendered,
-    // and will bind all of your 'ui' hash elements to the view.
-    // this call MUST come after a call to render, as your view's html
-    // will not exist in the DOM until then.
+    /*
+     * _bindUIElements
+     *
+     * Internal helper - will be called automatically after
+     * a view instance if rendered, and will bind all elements of the 'ui' hash
+     * passed in at initalization to a view instance.
+     */
     SPAViewKlass.prototype._bindUIElements = function(){
         if(!this.ui) return;
         for(var strName in this.ui){
@@ -66,8 +87,12 @@ var SPAViewKlass = (function(window,document,undefined){
         }
     }
 
-    // will get called automatically after you render your view, and will bind
-    // any events you passed in during construction
+    /*
+     * _bindUIEvents
+     *
+     * Internal helper - will be called automatically after a view is rendered,
+     * and will bind events passed in the 'events' list at initialization time.
+     */
     SPAViewKlass.prototype._bindEvents = function(){
         if(!this.events || this.events.length <= 0) return;
 
@@ -77,10 +102,12 @@ var SPAViewKlass = (function(window,document,undefined){
         }
     }
 
-    // capture closure for binding the given element to the given event with the given
-    // handler function.
-    // this function assumes that the given element and handler are bound to 'this'
-    // already
+    /*
+     * _bind
+     *
+     * Internal helper - bind the given element to the given event, and invoke the given
+     * callback handler.
+     */
     SPAViewKlass.prototype._bind = function(strElementName, strEventName, strHandlerName){
         var self = this;
         this[strElementName].addEventListener(strEventName, function(){
@@ -89,5 +116,5 @@ var SPAViewKlass = (function(window,document,undefined){
     }
 
     return SPAViewKlass;
-    
+
 })(window,document);
