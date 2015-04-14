@@ -15,6 +15,33 @@
                 <ul id="search-result-list">
                 </ul>
             </div>
+            <div id="movie-view">
+                <h1 id="title"></h1>
+                <hr/>
+
+                <div>Rating:</div>
+                <div id="rating"></div>
+
+                <div>Director:</div>
+                <div id="director"></div>
+
+                <div>Genre:</div>
+                <div id="genre"></div>
+
+                <div>Plot:</div>
+                <div id="plot"></div>
+
+                <div>Awards:</div>
+                <div id="awards"></div>
+
+                <div>Released:</div>
+                <div id="released"></div>
+
+                <div>Runtime:</div>
+                <div id="runtime"></div>
+                <hr/>
+                <button type="button" id="back-to-search">Back to Search</button>
+            </div>
         </div>
     </body>
 
@@ -29,118 +56,249 @@
         // TODO - event binding on search-result-list
         // TODO - should be rendering views w/ the app, so event handling can happen
 
-        var homePage = new SPAViewKlass({
-            html: document.getElementById("home-view").innerHTML,
-            viewAnchor: document.getElementById("container"),
-            ui:{
-                'searchBox': '#search-textbox',
-                'searchButton': '#search-button',
-                'searchResultList': "#search-result-list"
-            },
-            events:[
-                {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
-                {event: 'click', element: 'searchButton', handler: 'onSearchClick'}
-            ],
-            functions:{
-                onRenderComplete:function(){
-                    this.searchBox.focus();
+        // there are two conceptual types of buttons on the home page:
+        // 1. a button for a movie search result, and
+        // 2. a button to add a search result to the 'favorites'
+        //
+        // these constants will help differentiate b/w those two types of buttons:
+        var BUTTON_TYPE_MOVIE = 'movieButton',
+            BUTTON_TYPE_FAVORITE = 'movieFavoriteButton';
+
+        // when the user clicks a 'favorite' button, we need to know two things:
+        // the title and id of the movie they want to add to 'favorites'.
+        // we'll delimit those two pieces of data with this delimiter,
+        // so that it's easy to parse-out.
+        var FAVORITE_DATA_DELIMITER = "@@@",
+            reFavoriteDataDelimiter = new RegExp(FAVORITE_DATA_DELIMITER);
+
+        function renderHomePage(){
+            var homePage = new SPAViewKlass({
+                html: document.getElementById("home-view").innerHTML,
+                viewAnchor: document.getElementById("container"),
+                ui:{
+                    'searchBox': '#search-textbox',
+                    'searchButton': '#search-button',
+                    'searchResultList': "#search-result-list"
                 },
-                performMovieSearch:function(strSearch){
-                    app.clearFeedback();
-                    if(typeof strSearch !== 'string'){
-                        app.displayError("Search term must be a valid string");
-                        return;
-                    }
+                events:[
+                    {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
+                    {event: 'click', element: 'searchButton', handler: 'onSearchClick'},
 
-                    if(strSearch.length <= 0) return;
+                    // by taking advantage of event-bubbling, we can handle the 'add-to-favorites'
+                    // button click events, AND the movie-selection button click events by adding
+                    // an event listener to the parent of both and then discerning which
+                    // type was clicked!
+                    {event: 'click', element: 'searchResultList', handler: 'mainEventHandler'}
+                ],
+                functions:{
+                    mainEventHandler:function(e){
+                        if(e.target.id === BUTTON_TYPE_MOVIE)
+                            this.onMovieButtonClick(e.target.value);
+                        else if(e.target.id === BUTTON_TYPE_FAVORITE)
+                            this.onAddToFavoritesButtonClick(e.target.value);
+                    },
+                    onMovieButtonClick:function(idOfMovie){
+                        if(typeof idOfMovie !== 'string' || idOfMovie.length <= 0) throw "Cannot view movie page without an id";
+                        
+                        moviePageHandler(idOfMovie);
+                    },
+                    onAddToFavoritesButtonClick:function(titleAndIdOfMovie){
+                        if(typeof titleAndIdOfMovie !== 'string' || titleAndIdOfMovie.length <= 0) throw "Missing required title-and-id string for adding to favorites";
 
-                    // TODO - busy icon
-                    // TODO - button disabled, textbox disabled
-                    var self = this;
-                    ajax.request({
-                        url: 'http://www.omdbapi.com/?s=' + strSearch,
-                        type:'get',
-                        success: function(strJsonResponse){
+                        // when we insert the 'add to favorite' buttons to the view, the 'value' of those
+                        // buttons are stuffed with the title and id of the movie they correspond to.
+                        // let's parse that data out and make sure it's present - error out if not!
+                        var titleAndIDTuple = titleAndIdOfMovie.split(reFavoriteDataDelimiter),
+                            title = titleAndIDTuple[0],
+                            id = titleAndIDTuple[1];
 
-                            var omdbResponse = null;
-                            try{
-                                omdbResponse = JSON.parse(strJsonResponse);
-                            }catch(e){
-                                app.displayError("Encountered this error after movie request succeeded, please try again: " + e);
-                                return;
-                            }
+                        if(typeof title !== 'string' || title.length <= 0) throw "Encountered improperly formatted favorite-button value (missing title)";
 
-                            if(omdbResponse == null){
-                                app.displayError("Unexpected response format, please try again");
-                                return;
-                            }
+                        if(typeof id !== 'string' || id.length <= 0) throw "Encountered improperly formatted favorite-button value (missing id)";
 
-                            if(omdbResponse.Response === 'False'){
-                                var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
-                                app.displayError(strError);
-                                return;
-                            }
-
-                            if(!omdbResponse.Search){
-                                app.displayError("Failed to retrieve any search results from OMDBAPI");
-                                return;
-                            }
-
-                            self.displayMoveSearchResults(omdbResponse.Search);
-                            // TODO - busy icon off
-                            // TODO - button enabled, textbox enabled
-                        },
-                        error:function(status, xmlhttp){
-                            var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
-                            app.displayError("Encountered the following error, please try again: " + strError);
-                            // TODO - busy icon off
-                            // TODO - button enabled, textbox enabled
+                        alert("title: " + title + " and id: " + id);
+                    },
+                    onRenderComplete:function(){
+                        this.searchBox.focus();
+                    },
+                    performMovieSearch:function(strSearch){
+                        app.clearFeedback();
+                        if(typeof strSearch !== 'string'){
+                            app.displayError("Search term must be a valid string");
+                            return;
                         }
-                    });
+
+                        if(strSearch.length <= 0) return;
+
+                        // TODO - busy indicator
+                        var self = this;
+                        ajax.request({
+                            url: 'http://www.omdbapi.com/?s=' + strSearch,
+                            type:'get',
+                            success: function(strJsonResponse){
+
+                                var omdbResponse = null;
+                                try{
+                                    omdbResponse = JSON.parse(strJsonResponse);
+                                }catch(e){
+                                    app.displayError("Encountered this error after movie request succeeded, please try again: " + e);
+                                    // TODO - busy indicator
+                                    return;
+                                }
+
+                                if(omdbResponse == null){
+                                    app.displayError("Unexpected response format, please try again");
+                                    // TODO - busy indicator
+                                    return;
+                                }
+
+                                if(omdbResponse.Response === 'False'){
+                                    var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
+                                    app.displayError(strError);
+                                    // TODO - busy indicator
+                                    return;
+                                }
+
+                                if(!omdbResponse.Search){
+                                    app.displayError("Failed to retrieve any search results from OMDBAPI");
+                                    // TODO - busy indicator
+                                    return;
+                                }
+
+                                // TODO - busy indicator
+                                self.displayMoveSearchResults(omdbResponse.Search);
+                            },
+                            error:function(status, xmlhttp){
+                                var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
+                                app.displayError("Encountered the following error while searching, please try again: " + strError);
+                                // TODO - busy indicator
+                            }
+                        });
+                    },
+                    displayMoveSearchResults: function(results){
+                        if(results == null){
+                            app.displayError("Missing required result list, cannot show movie search results");
+                            return;
+                        }
+
+                        // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
+                        var newResultListFragment = document.createDocumentFragment(),
+                            newLi = null,
+                            movieButton = null,
+                            faveButton = null,
+                            title = null,
+                            imdbID = null;
+                        for(var i = 0, iLen = results.length; i < iLen; i++){
+
+                            title = results[i].Title;
+                            imdbID = results[i].imdbID;
+                            newLi = document.createElement("LI");
+
+                            movieButton = document.createElement("BUTTON");
+                            movieButton.type = 'button';
+                            movieButton.id = BUTTON_TYPE_MOVIE;
+                            movieButton.value = imdbID;
+                            movieButton.appendChild( document.createTextNode(title) );
+                            newLi.appendChild(movieButton);
+
+                            faveButton = document.createElement("BUTTON");
+                            faveButton.type = 'button';
+                            faveButton.id = BUTTON_TYPE_FAVORITE;
+                            faveButton.value = title + FAVORITE_DATA_DELIMITER + imdbID;
+                            faveButton.appendChild( document.createTextNode('Add to Favorites') );//TODO - make this an icon
+                            newLi.appendChild(faveButton);
+
+                            newResultListFragment.appendChild(newLi);
+                        }
+
+                        this.searchResultList.innerHTML = "";
+                        this.searchResultList.appendChild(newResultListFragment);
+                    },
+                    onSearchBoxKeyup: function(e){
+
+                        // 13 is the 'enter' key
+                        //
+                        // see keycodes here:
+                        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
+                        if(e.keyCode === 13) this.performMovieSearch(this.searchBox.value);
+                    },
+                    onSearchClick:function(e){
+                        this.performMovieSearch(this.searchBox.value);
+                    }
+                }
+            });
+
+            homePage.render();
+        }
+
+        function renderMoviePage(movie){
+            var movieView = new SPAViewKlass({
+                html: document.getElementById("movie-view").innerHTML,
+                viewAnchor: document.getElementById("container"),
+                ui:{
+                    'title': '#title',
+                    'rating':'#rating',
+                    'director':'#director',
+                    'genre':'#genre',
+                    'plot':'#plot',
+                    'awards':'#awards',
+                    'released':'#released',
+                    'runtime':'#runtime',
+                    'backToSearchButton': '#back-to-search'
                 },
-                displayMoveSearchResults: function(results){
-                    if(results == null){
-                        app.displayError("Missing required result list, cannot show movie search results");
+                events:[
+                    {event:'click', element:'backToSearchButton', handler:'onBackToSearchClick'}
+                ],
+                functions:{
+                    onRenderComplete:function(){
+                        this.title.innerHTML = movie.Title || "Unknown Movie Title";
+                        this.rating.innerHTML = movie.Rated || "Unknown Rating";
+                        this.director.innerHTML = movie.Director || "Unknown Director";
+                        this.genre.innerHTML = movie.Genre || "Unknown Genre";
+                        this.plot.innerHTML = movie.Plot || "No Plot Provided";
+                        this.awards.innerHTML = movie.Awards || "-";
+                        this.released.innerHTML = movie.Released || "-";
+                        this.runtime.innerHTML = movie.Runtime || "-";
+                    },
+                    onBackToSearchClick:function(){
+                        renderHomePage();
+                    }
+                }
+            });
+
+            movieView.render();
+        }
+
+        function moviePageHandler(movieID){
+            if(typeof movieID !== 'string' || movieID.length <= 0) throw "Cannot show movie page without a movie id string";
+
+            // TODO - busy indicator
+            ajax.request({
+                url: 'http://www.omdbapi.com/?i=' + movieID,
+                type:'get',
+                success: function(strJsonResponse){
+
+                    var movie = null;
+                    try{
+                        movie = JSON.parse(strJsonResponse);
+                    }catch(e){
+                        app.displayError("Failed to parse response for movie " + movieID);
+                        // TODO - busy indicator
                         return;
                     }
 
-                    // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
-                    var newResultListFragment = document.createDocumentFragment(),
-                        newLi = null,
-                        newButton = null,
-                        newFave = null;
-                    for(var i = 0, iLen = results.length; i < iLen; i++){
-                        newLi = document.createElement("LI");
-
-                        newButton = document.createElement("BUTTON");
-                        newButton.type = 'button';
-                        newButton.appendChild( document.createTextNode(results[i].Title) );
-                        newLi.appendChild(newButton);
-
-                        newFave = document.createElement("BUTTON");
-                        newFave.type = 'button';
-                        newFave.appendChild( document.createTextNode('Favorite!') );//TODO - make this an icon
-                                                                                    //TODO - needs to contain ID for event handler
-                        newLi.appendChild(newFave);
-
-                        newResultListFragment.appendChild(newLi);
-                    }
-
-                    this.searchResultList.innerHTML = "";
-                    this.searchResultList.appendChild(newResultListFragment);
+                    //todo busy indicator
+                    renderMoviePage(movie);
                 },
-                onSearchBoxKeyup: function(e){
-                    if(e.keyCode === 13){
-                        this.performMovieSearch(this.searchBox.value);  
-                    } 
-                },
-                onSearchClick:function(e){
-                    this.performMovieSearch(this.searchBox.value);
+                error:function(status, xmlhttp){
+                    var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
+                    app.displayError("Encountered the following error while fetching movie data, please try again: " + strError);
+                    // TODO - busy indicator
                 }
-            }
-        });
+            });
+        }
 
-        homePage.render();
+        renderHomePage();
         
     })(window,document,JSON,ajaxHelpers,spaApplication,SPAViewKlass);
     
