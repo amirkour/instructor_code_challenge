@@ -19,49 +19,8 @@
     </body>
 
     <script type="text/javascript" src="/ajax-helpers.js" ></script>
+    <script type="text/javascript" src="/spa-application.js"></script>
     <script>
-
-    
-
-    // parent app - hosts utility and helpers for the rest of the app
-    var spaApplication = (function(window,document,undefined){
-
-        if(window.spaApplication) return window.spaApplication;
-
-        var ApplicationKlass = function(){
-            this.feedbackDiv = document.getElementById("feedback");
-        }
-        ApplicationKlass.prototype.displayFeedback = function(strText, status){
-            if(typeof strText !== 'string' || strText.length <= 0) return;
-            this.feedbackDiv.innerHTML = strText;
-            switch(status){
-                case 'error':
-                    this.feedbackDiv.style.border = "1px solid red";
-                    break;
-                case 'info':
-                    this.feedbackDiv.style.border = "1px solid green";
-                    break;
-                default:
-                    this.feedbackDiv.style.border = "1px solid blue";
-                    break;
-            }
-
-            this.feedbackDiv.style.display = "block";
-        }
-        ApplicationKlass.prototype.displayError = function(strText){
-            this.displayFeedback(strText,'error');
-        }
-        ApplicationKlass.prototype.displayInfo = function(strText){
-            this.displayFeedback(strText,'info');
-        }
-        ApplicationKlass.prototype.clearFeedback = function(){
-            this.feedbackDiv.innerHTML = '';
-            this.feedbackDiv.style.display = "none";
-        }
-
-        return new ApplicationKlass();
-
-    })(window,document);
 
     // TODO - JSON not supported in older browsers ...
     (function(window,document,JSON,ajax,app,undefined){
