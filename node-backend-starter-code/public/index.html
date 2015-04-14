@@ -16,8 +16,8 @@
             <div style="display:none;">
                 <div id="home-view">
                     <div>
-                        <h1>Search OMD</h1>
-                        <input type="text" id="search-textbox" placeholder="Search OMDB API" />
+                        <h1>Search OMDB</h1>
+                        <input type="text" id="search-textbox" placeholder="Search OMDB" />
                         <input type="button" id="search-button" value="Search" />
                         <p>
                             or <a href="#" id="view-favorites-link">view all favorites</a>
@@ -50,6 +50,14 @@
 
                     <div>Runtime:</div>
                     <div id="runtime"></div>
+                    <hr/>
+                    <button type="button" id="back-to-search">Back to Search</button>
+                </div>
+                <div id="favorites-view">
+                    <h1>Favorites</h1>
+                    <hr/>
+                    <ul id="favorite-list">
+                    </ul>
                     <hr/>
                     <button type="button" id="back-to-search">Back to Search</button>
                 </div>
@@ -286,6 +294,35 @@
             movieView.render();
         }
 
+        function renderFavoritesPage(favorites){
+            var favoritesView = new SPAViewKlass({
+                html: document.getElementById("favorites-view").innerHTML,
+                viewAnchor: document.getElementById("container"),
+                ui:{
+                    'backToSearchButton': '#back-to-search',
+                    'favoriteList': '#favorite-list'
+                },
+                events:[
+                    {event:'click', element:'backToSearchButton', handler:'onBackToSearchClick'}
+                ],
+                functions:{
+                    onRenderComplete:function(){
+                        if(favorites == null || favorites.length <= 0){
+                            this.favoriteList.appendChild( document.createTextNode("No Favorites Available") );
+                            return;
+                        }
+
+                        alert('render faves');
+                    },
+                    onBackToSearchClick:function(){
+                        renderHomePage();
+                    }
+                }
+            });
+
+            favoritesView.render();
+        }
+
         function moviePageHandler(movieID){
             if(typeof movieID !== 'string' || movieID.length <= 0) throw "Cannot show movie page without a movie id string";
 
@@ -316,7 +353,29 @@
         }
 
         function favoritePageHandler(){
-            alert('going to faves');
+            // TODO - busy indicator
+            ajax.request({
+                url: '/favorites',
+                type:'get',
+                success:function(strJsonResponse){
+                    var favorites = null;
+                    try{
+                        favorites = JSON.parse(strJsonResponse);
+                    }catch(e){
+                        app.displayError("Failed to parse response for favorites " + movieID);
+                        // TODO - busy indicator
+                        return;
+                    }
+
+                    //TODO busy indicator
+                    renderFavoritesPage(favorites);
+                },
+                error:function(status,xmlhttp){
+                    var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
+                    app.displayError("Encountered the following error while fetching favorites, please try again: " + strError);
+                    // TODO - busy indicator
+                }
+            });
         }
 
         renderHomePage();
