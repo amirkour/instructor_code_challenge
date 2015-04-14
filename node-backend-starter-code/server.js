@@ -15,6 +15,8 @@ app.get('/favorites', function(req, res){
 });
 
 app.post('/favorites', function(req, res){
+  console.log("Got a request");
+  console.log("req body is " + req.body);
   if(!req.body.name || !req.body.oid){
     res.send("Error");
     return;

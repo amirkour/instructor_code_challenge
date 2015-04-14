@@ -141,7 +141,27 @@
 
                         if(typeof id !== 'string' || id.length <= 0) throw "Encountered improperly formatted favorite-button value (missing id)";
 
-                        alert("title: " + title + " and id: " + id);
+                        var params = {
+                            name: title,
+                            oid: id
+                        };
+
+                        // TODO - busy indicator
+                        app.clearFeedback();
+                        ajax.request({
+                            type:'post',
+                            data: JSON.stringify(params),
+                            url: '/favorites',
+                            success:function(){
+                                app.displayInfo("Successfully added " + title + " to favorites!");
+                                // TODO - busy indicator
+                            },
+                            error:function(status,xmlhttp){
+                                var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
+                                app.displayError("Encountered the following error while adding a favorite, please try again: " + strError);
+                                // TODO - busy indicator
+                            }
+                        });
                     },
                     onRenderComplete:function(){
                         this.searchBox.focus();
