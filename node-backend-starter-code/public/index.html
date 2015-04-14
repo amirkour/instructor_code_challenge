@@ -5,214 +5,144 @@
     </head>
     <body>
         <div id="feedback" style="display:none;"></div>
-        <input type="text" id="search-textbox" placeholder="Search OMDB API" />
-        <input type="button" id="search-button" value="Search" />
-        <ul id="search-result-list">
-        </ul>
+        <div id="container"></div>
+
+        <!-- all the view templates will be in this hidden div -->
+        <div style="display:none;">
+            <div id="home-view">
+                <input type="text" id="search-textbox" placeholder="Search OMDB API" />
+                <input type="button" id="search-button" value="Search" />
+                <ul id="search-result-list">
+                </ul>
+            </div>
+        </div>
     </body>
 
+    <script type="text/javascript" src="/ajax-helpers.js" ></script>
+    <script type="text/javascript" src="/spa-application.js"></script>
+    <script type="text/javascript" src="/spa-view.js"></script>
     <script>
 
     // TODO - JSON not supported in older browsers ...
-    // TODO - put this in it's own script file
-    var ajaxHelpers = (function(window,document,JSON,undefined){
-
-        if(window.ajaxHelpers) return window.ajaxHelpers;
-
-        // for now, only support the bare-minimum for demo purposes
-        var supportedAjaxRequestTypes = ['get','post'];
-
-        // just an empty helper function, for utility
-        function cbEmpty(){}
-
-        var exports = {
-            request:function(options){
-                var xmlhttp,
-                    options = options || {},
-                    cbSuccess = typeof options.success === 'function' ? options.success : cbEmpty,
-                    cbError = typeof options.error === 'function' ? options.error : cbEmpty,
-                    type = options.type,
-                    url = options.url,
-                    data = options.data;
-
-                if(typeof url !== 'string') throw "Cannot make ajax request - missing required 'url' parameter";
-                if(typeof type !== 'string' || type.length <= 0) throw "Cannot make ajax request - missing required 'type' parameter";
-
-                type = type.toLowerCase();
-                if(supportedAjaxRequestTypes.indexOf(type) < 0) throw "Cannot make ajax request of type '" + type + "' - must be one of " + supportedAjaxRequestTypes.join(',');
-
-                // code for IE7+, Firefox, Chrome, Opera, Safari
-                if (window.XMLHttpRequest)
-                {
-                    xmlhttp=new XMLHttpRequest();
-                }
-
-                // code for IE6, IE5
-                else
-                {
-                    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-                }
-
-                xmlhttp.onreadystatechange = function(){
-                    if (xmlhttp.readyState === 4){ // request is finished, response is ready
-                        switch(xmlhttp.status){
-                            case 200:
-                                cbSuccess.call(xmlhttp, xmlhttp.responseText);
-                                break;
-                            default:
-                                cbError.call(xmlhttp, xmlhttp.status, xmlhttp);
-                                break;
-                        }
-                    }
-                };
-
-                xmlhttp.open(type,url,true);
-                if(type === 'post') xmlhttp.setRequestHeader("Content-type","application/json");
-                if(data != null)
-                    xmlhttp.send(JSON.stringify(data));
-                else
-                    xmlhttp.send();
-            }
-        };
-
-        return exports;
-
-    })(window,document,JSON);
-
-    // main app, so to speak
-    (function(window,document,JSON,ajax,undefined){
+    (function(window,document,JSON,ajax,app,SPAViewKlass,undefined){
 
         // TODO - event binding on search-result-list
+        // TODO - should be rendering views w/ the app, so event handling can happen
 
-        var searchBox = document.getElementById("search-textbox"),
-            feedbackDiv = document.getElementById("feedback"),
-            searchButton = document.getElementById("search-button"),
-            searchResultList = document.getElementById("search-result-list");
-
-        function displayFeedback(strText, status){
-            if(typeof strText !== 'string' || strText.length <= 0) return;
-            feedbackDiv.innerHTML = strText;
-            switch(status){
-                case 'error':
-                    feedbackDiv.style.border = "1px solid red";
-                    break;
-                case 'info':
-                    feedbackDiv.style.border = "1px solid green";
-                    break;
-                default:
-                    feedbackDiv.style.border = "1px solid blue";
-                    break;
-            }
-
-            feedbackDiv.style.display = "block";
-        }
-        function displayError(strText){
-            displayFeedback(strText,'error');
-        }
-        function displayInfo(strText){
-            displayFeedback(strText,'info');
-        }
-        function clearFeedback(){
-            feedbackDiv.innerHTML = '';
-            feedbackDiv.style.display = "none";
-        }
-
-        function displayMoveSearchResults(results){
-            if(results == null){
-                displayError("Missing required result list, cannot show movie search results");
-                return;
-            }
-
-            // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"},{"Title":"Star Wars: Episode V - The Empire Strikes Back","Year":"1980","imdbID":"tt0080684","Type":"movie"},{"Title":"Star Wars: Episode VI - Return of the Jedi","Year":"1983","imdbID":"tt0086190","Type":"movie"},{"Title":"Star Wars: Episode I - The Phantom Menace","Year":"1999","imdbID":"tt0120915","Type":"movie"},{"Title":"Star Wars: Episode III - Revenge of the Sith","Year":"2005","imdbID":"tt0121766","Type":"movie"},{"Title":"Star Wars: Episode II - Attack of the Clones","Year":"2002","imdbID":"tt0121765","Type":"movie"},{"Title":"Star Wars: The Clone Wars","Year":"2008","imdbID":"tt1185834","Type":"movie"},{"Title":"Star Wars: The Clone Wars","Year":"2008–2014","imdbID":"tt0458290","Type":"series"},{"Title":"Star Wars: Clone Wars","Year":"2003–2005","imdbID":"tt0361243","Type":"series"},{"Title":"The Star Wars Holiday Special","Year":"1978","imdbID":"tt0193524","Type":"movie"}]
-
-            var newResultListFragment = document.createDocumentFragment(),
-                newLi = null,
-                newButton = null,
-                newFave = null;
-            for(var i = 0, iLen = results.length; i < iLen; i++){
-                newLi = document.createElement("LI");
-
-                newButton = document.createElement("BUTTON");
-                newButton.type = 'button';
-                newButton.appendChild( document.createTextNode(results[i].Title) );
-                newLi.appendChild(newButton);
-
-                newFave = document.createElement("BUTTON");
-                newFave.type = 'button';
-                newFave.appendChild( document.createTextNode('Favorite!') );//TODO - make this an icon
-                                                                            //TODO - needs to contain ID for event handler
-                newLi.appendChild(newFave);
-
-                newResultListFragment.appendChild(newLi);
-            }
-
-            searchResultList.innerHTML = "";
-            searchResultList.appendChild(newResultListFragment);
-        }
-        
-        function performMovieSearch(strSearch){
-            clearFeedback();
-            if(typeof strSearch !== 'string'){
-                displayError("Search term must be a valid string");
-                return;
-            }
-
-            if(strSearch.length <= 0) return;
-
-            // TODO - busy icon
-            // TODO - button disabled, textbox disabled
-            ajax.request({
-                url: 'http://www.omdbapi.com/?s=' + strSearch,
-                type:'get',
-                success: function(strJsonResponse){
-
-                    var omdbResponse = null;
-                    try{
-                        omdbResponse = JSON.parse(strJsonResponse);
-                    }catch(e){
-                        displayError("Encountered this error after movie request succeeded, please try again: " + e);
-                        return;
-                    }
-
-                    if(omdbResponse == null){
-                        displayError("Unexpected response format, please try again");
-                        return;
-                    }
-
-                    if(omdbResponse.Response === 'False'){
-                        var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
-                        displayError(strError);
-                        return;
-                    }
-
-                    if(!omdbResponse.Search){
-                        displayError("Failed to retrieve any search results from OMDBAPI");
-                        return;
-                    }
-
-                    displayMoveSearchResults(omdbResponse.Search);
-                    // TODO - busy icon off
-                    // TODO - button enabled, textbox enabled
+        var homePage = new SPAViewKlass({
+            html: document.getElementById("home-view").innerHTML,
+            viewAnchor: document.getElementById("container"),
+            ui:{
+                'searchBox': '#search-textbox',
+                'searchButton': '#search-button',
+                'searchResultList': "#search-result-list"
+            },
+            events:[
+                {event: 'keyup', element: 'searchBox', handler: 'onSearchBoxKeyup'},
+                {event: 'click', element: 'searchButton', handler: 'onSearchClick'}
+            ],
+            functions:{
+                onRenderComplete:function(){
+                    this.searchBox.focus();
                 },
-                error:function(status, xmlhttp){
-                    var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
-                    displayError("Encountered the following error, please try again: " + strError);
-                    // TODO - busy icon off
-                    // TODO - button enabled, textbox enabled
+                performMovieSearch:function(strSearch){
+                    app.clearFeedback();
+                    if(typeof strSearch !== 'string'){
+                        app.displayError("Search term must be a valid string");
+                        return;
+                    }
+
+                    if(strSearch.length <= 0) return;
+
+                    // TODO - busy icon
+                    // TODO - button disabled, textbox disabled
+                    var self = this;
+                    ajax.request({
+                        url: 'http://www.omdbapi.com/?s=' + strSearch,
+                        type:'get',
+                        success: function(strJsonResponse){
+
+                            var omdbResponse = null;
+                            try{
+                                omdbResponse = JSON.parse(strJsonResponse);
+                            }catch(e){
+                                app.displayError("Encountered this error after movie request succeeded, please try again: " + e);
+                                return;
+                            }
+
+                            if(omdbResponse == null){
+                                app.displayError("Unexpected response format, please try again");
+                                return;
+                            }
+
+                            if(omdbResponse.Response === 'False'){
+                                var strError = typeof omdbResponse.Error === 'string' && omdbResponse.Error.length > 0 ? omdbResponse.Error : "Unknown error from OMDBAPI";
+                                app.displayError(strError);
+                                return;
+                            }
+
+                            if(!omdbResponse.Search){
+                                app.displayError("Failed to retrieve any search results from OMDBAPI");
+                                return;
+                            }
+
+                            self.displayMoveSearchResults(omdbResponse.Search);
+                            // TODO - busy icon off
+                            // TODO - button enabled, textbox enabled
+                        },
+                        error:function(status, xmlhttp){
+                            var strError = typeof xmlhttp.responseText === 'string' ? xmlhttp.responseText : "Unknown error";
+                            app.displayError("Encountered the following error, please try again: " + strError);
+                            // TODO - busy icon off
+                            // TODO - button enabled, textbox enabled
+                        }
+                    });
+                },
+                displayMoveSearchResults: function(results){
+                    if(results == null){
+                        app.displayError("Missing required result list, cannot show movie search results");
+                        return;
+                    }
+
+                    // [{"Title":"Star Wars: Episode IV - A New Hope","Year":"1977","imdbID":"tt0076759","Type":"movie"}...]
+                    var newResultListFragment = document.createDocumentFragment(),
+                        newLi = null,
+                        newButton = null,
+                        newFave = null;
+                    for(var i = 0, iLen = results.length; i < iLen; i++){
+                        newLi = document.createElement("LI");
+
+                        newButton = document.createElement("BUTTON");
+                        newButton.type = 'button';
+                        newButton.appendChild( document.createTextNode(results[i].Title) );
+                        newLi.appendChild(newButton);
+
+                        newFave = document.createElement("BUTTON");
+                        newFave.type = 'button';
+                        newFave.appendChild( document.createTextNode('Favorite!') );//TODO - make this an icon
+                                                                                    //TODO - needs to contain ID for event handler
+                        newLi.appendChild(newFave);
+
+                        newResultListFragment.appendChild(newLi);
+                    }
+
+                    this.searchResultList.innerHTML = "";
+                    this.searchResultList.appendChild(newResultListFragment);
+                },
+                onSearchBoxKeyup: function(e){
+                    if(e.keyCode === 13){
+                        this.performMovieSearch(this.searchBox.value);  
+                    } 
+                },
+                onSearchClick:function(e){
+                    this.performMovieSearch(this.searchBox.value);
                 }
-            });
-        }
-        searchButton.addEventListener('click',function(){
-            performMovieSearch(searchBox.value);
-        });
-        searchBox.addEventListener('keyup', function(e){
-            if(e.keyCode && e.keyCode === 13) performMovieSearch(searchBox.value);
+            }
         });
 
-        // give the searchbox immediate focus, so users can start searching away!
-        searchBox.focus();
-
-    })(window,document,JSON,ajaxHelpers);
+        homePage.render();
+        
+    })(window,document,JSON,ajaxHelpers,spaApplication,SPAViewKlass);
     
     </script>
 </html>
